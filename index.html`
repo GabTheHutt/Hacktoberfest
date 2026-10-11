@@ -45,7 +45,7 @@
     let filledGrid = [];
 
     const GRID_SIZE = 64;
-    const PIXEL_SIZE = 8; // 64 * 8 = 512px
+    const PIXEL_SIZE = 8;
 
     async function setupWebcam() {
       try {
@@ -80,7 +80,6 @@
       canvas.height = GRID_SIZE;
       const ctx = canvas.getContext("2d");
 
-      // Draw the source canvas (snapshot) directly to the tiny grid canvas
       ctx.drawImage(sourceCanvas, 0, 0, GRID_SIZE, GRID_SIZE);
       const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
       const paletteRgb = currentPalette.map(hex => hexToRgb(hex));
@@ -107,31 +106,6 @@
       return grid;
     }
 
-    function drawGame() {
-      gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-
-      for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
-          const colorIndex = gameData.grid[y][x];
-
-          if (filledGrid[y][x]) {
-            gCtx.fillStyle = currentPalette[colorIndex];
-            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-          } else {
-            gCtx.fillStyle = "white";
-            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-
-            // Optional: Draw numbers if resolution is low enough, or keep them very faint
-            gCtx.fillStyle = "#ddd";
-            gCtx.font = "5px Arial";
-            gCtx.textAlign = "center";
-            gCtx.textBaseline = "middle";
-            gCtx.fillText(colorIndex, x * PIXEL_SIZE + PIXEL_SIZE/2, y * PIXEL_SIZE + PIXEL_SIZE/2);
-          }
-        }
-      }
-    }
-
     async function captureAndProcess() {
       if (!video.videoWidth) {
         status.textContent = "The webcam is not ready yet.";
@@ -141,7 +115,6 @@
       const captureBtn = document.querySelector("#capture");
       captureBtn.disabled = true;
 
-      // 1. Capture snapshot immediately
       const snapshot = document.querySelector("#snapshot");
       snapshot.width = video.videoWidth;
       snapshot.height = video.videoHeight;
@@ -158,7 +131,6 @@
       status.className = "";
       status.innerHTML = `<div class="loader"></div> Gemma is curating your palette...`;
 
-      // 2. Optimized AI Image: Lower resolution (128px) for faster API processing
       const tempCanvas = document.createElement("canvas");
       const scale = Math.min(1, 128 / video.videoWidth);
       tempCanvas.width = Math.max(1, Math.round(video.videoWidth * scale));
@@ -173,15 +145,18 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: imageDataUrl })
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Request failed");
 
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || errorData.message || `Server Error: ${response.status}`);
+        }
+
+        const data = await response.json();
         gameData = data.result;
         if (!gameData || gameData.error) {
           throw new Error(gameData?.error || "Gemma failed to generate the palette.");
         }
 
-        // 3. Instant Local Grid: Process directly from the snapshot canvas
         currentPalette = gameData.palette || [];
         const grid = generateLocalGrid(snapshot);
         gameData.grid = grid;
@@ -190,6 +165,7 @@
         initGame();
 
       } catch (error) {
+        console.error("Capture Error:", error);
         status.textContent = `Error: ${error.message}`;
         captureBtn.disabled = false;
         snapshot.style.display = "none";
@@ -222,6 +198,27 @@
         paletteContainer.appendChild(swatch);
       });
       drawGame();
+    }
+
+    function drawGame() {
+      gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const colorIndex = gameData.grid[y][x];
+          if (filledGrid[y][x]) {
+            gCtx.fillStyle = currentPalette[colorIndex];
+            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+          } else {
+            gCtx.fillStyle = "white";
+            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+            gCtx.fillStyle = "#ddd";
+            gCtx.font = "5px Arial";
+            gCtx.textAlign = "center";
+            gCtx.textBaseline = "middle";
+            gCtx.fillText(colorIndex, x * PIXEL_SIZE + PIXEL_SIZE/2, y * PIXEL_SIZE + PIXEL_SIZE/2);
+          }
+        }
+      }
     }
 
     function handleInput(e) {

@@ -55,7 +55,13 @@
     }
 
     function hexToRgb(hex) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!hex) return null;
+      // Handle 3-digit hex (#RGB) and 6-digit hex (#RRGGBB)
+      let cleanHex = hex.replace('#', '');
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex.split('').map(char => char + char).join('');
+      }
+      const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(cleanHex);
       return result ? {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
@@ -64,6 +70,7 @@
     }
 
     function getColorDistance(rgb1, rgb2) {
+      if (!rgb1 || !rgb2) return Infinity;
       return Math.sqrt(
         Math.pow(rgb1.r - rgb2.r, 2) +
         Math.pow(rgb1.g - rgb2.g, 2) +
