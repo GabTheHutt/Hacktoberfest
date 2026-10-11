@@ -78,6 +78,7 @@
 
   <div id="preview-container">
     <video id="webcam" autoplay playsinline></video>
+    <canvas id="snapshot" style="display: none; width: 100%; max-width: 400px; border: 4px solid #333; border-radius: 8px;"></canvas>
   </div>
 
   <div id="game-container">
@@ -116,6 +117,18 @@
       const captureBtn = document.querySelector("#capture");
       captureBtn.disabled = true;
 
+      // Create a snapshot to show the user what was captured
+      const snapshot = document.querySelector("#snapshot");
+      snapshot.width = video.videoWidth;
+      snapshot.height = video.videoHeight;
+      const sCtx = snapshot.getContext("2d");
+      sCtx.drawImage(video, 0, 0);
+
+      // Show snapshot, hide live video
+      snapshot.style.display = "block";
+      video.style.display = "none";
+
+      // Lock the frame: stop the stream
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
       }
@@ -124,7 +137,6 @@
       status.textContent = "Gemma is painting your pixel art...";
 
       const tempCanvas = document.createElement("canvas");
-      // OPTIMIZATION: Reduce resolution to 256px for faster API processing
       const scale = Math.min(1, 256 / video.videoWidth);
       tempCanvas.width = Math.max(1, Math.round(video.videoWidth * scale));
       tempCanvas.height = Math.max(1, Math.round(video.videoHeight * scale));
@@ -151,6 +163,8 @@
       } catch (error) {
         status.textContent = `Error: ${error.message}`;
         captureBtn.disabled = false;
+        snapshot.style.display = "none";
+        video.style.display = "block";
         setupWebcam();
       }
     }
@@ -255,6 +269,8 @@
     document.querySelector("#clear").addEventListener("click", () => {
       gameContainer.style.display = "none";
       previewContainer.style.display = "block";
+      document.querySelector("#snapshot").style.display = "none";
+      video.style.display = "block";
       status.className = "";
       status.textContent = "Allow webcam access, then capture an image.";
       document.querySelector("#capture").disabled = false;
