@@ -1,14 +1,15 @@
-/* Vibrant AI Pixel Art Theme */
+/* Premium AI Pixel Art Theme */
 :root {
-    --bg-gradient: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
+    --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
     --primary-color: #6C5CE7;
     --primary-hover: #a29bfe;
     --accent-color: #fdcb6e;
     --success-color: #00b894;
     --error-color: #d63031;
     --text-color: #2d3436;
-    --card-bg: rgba(255, 255, 255, 0.8);
-    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -26,17 +27,18 @@ body {
 }
 
 h1 {
-    font-size: 3rem;
+    font-size: 3.5rem;
     color: var(--primary-color);
     text-shadow: 2px 2px 0px white;
     margin-bottom: 0.5rem;
     font-weight: 800;
+    letter-spacing: -1px;
 }
 
 p {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     margin-bottom: 2rem;
-    opacity: 0.8;
+    opacity: 0.7;
 }
 
 .controls {
@@ -47,22 +49,22 @@ p {
 }
 
 button {
-    padding: 12px 24px;
-    font-size: 1rem;
+    padding: 14px 28px;
+    font-size: 1.1rem;
     font-weight: 600;
     cursor: pointer;
     border: none;
     border-radius: 50px;
     background: var(--primary-color);
     color: white;
-    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 button:hover {
     transform: translateY(-3px) scale(1.05);
     background: var(--primary-hover);
-    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.6);
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.5);
 }
 
 button:active {
@@ -79,12 +81,15 @@ button:disabled {
 #status {
     margin: 1.5rem 0;
     font-weight: 600;
-    padding: 10px 20px;
-    border-radius: 20px;
-    background: var(--card-bg);
+    padding: 12px 24px;
+    border-radius: 50px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
     box-shadow: var(--shadow);
     transition: all 0.3s ease;
-    min-width: 300px;
+    min-width: 320px;
+    text-align: center;
 }
 
 #status.success {
@@ -99,6 +104,9 @@ button:disabled {
 
 #preview-container {
     margin-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     animation: fadeIn 0.5s ease-in;
 }
 
@@ -106,33 +114,45 @@ button:disabled {
     width: 100%;
     max-width: 400px;
     border: 8px solid white;
-    border-radius: 20px;
+    border-radius: 24px;
     background: #000;
     box-shadow: var(--shadow);
     transform: scaleX(-1);
 }
 
 #game-container {
-    background: var(--card-bg);
-    padding: 30px;
-    border-radius: 30px;
-    backdrop-filter: blur(10px);
+    background: var(--glass-bg);
+    padding: 40px;
+    border-radius: 40px;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 25px;
+    gap: 30px;
     animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-#game-canvas {
+#theme-display {
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    text-align: center;
+}
+
+#pixel-grid {
+    display: grid;
+    grid-template-columns: repeat(64, 1fr);
+    grid-template-rows: repeat(64, 1fr);
+    gap: 0;
+    background: #ddd;
+    border: 8px solid white;
+    border-radius: 12px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+    overflow: hidden;
     width: 512px;
     height: 512px;
-    background: #ddd;
-    border: 5px solid white;
-    border-radius: 5px;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-    cursor: crosshair;
 }
 
 .pixel {
@@ -169,9 +189,9 @@ button:disabled {
 }
 
 .color-swatch {
-    width: 45px;
-    height: 45px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     border: 4px solid white;
     cursor: pointer;
     display: flex;
@@ -180,7 +200,7 @@ button:disabled {
     font-weight: bold;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     transition: all 0.2s ease;
 }
 
@@ -191,7 +211,24 @@ button:disabled {
 .color-swatch.active {
     border-color: var(--primary-color);
     transform: scale(1.2) rotate(5deg);
-    box-shadow: 0 0 15px var(--primary-color);
+    box-shadow: 0 0 20px var(--primary-color);
+}
+
+.loader {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 @keyframes fadeIn {

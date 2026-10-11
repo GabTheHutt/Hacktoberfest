@@ -152,7 +152,7 @@
           body: JSON.stringify({ image: imageDataUrl })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.message || "Request failed");
+        if (!response.ok) throw new Error(data.detail || data.message || "Request failed");
 
         gameData = data.result;
         if (!gameData || gameData.error) {

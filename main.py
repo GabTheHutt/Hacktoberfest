@@ -17,22 +17,33 @@ class AnalyzeRequest(BaseModel):
 
 def generate_pixel_art(image_data_url: str) -> dict:
     try:
+        if "," not in image_data_url:
+            return {"error": "Invalid image data URL format."}
+
         header, encoded_image = image_data_url.split(",", 1)
-        mime_type = header.split(";", 1)[0].removeprefix("data:")
-        image_bytes = base64.b64decode(encoded_image)
+        try:
+            mime_type = header.split(";", 1)[0].replace("data:", "")
+        except Exception:
+            mime_type = "image/png"
+
+        try:
+            image_bytes = base64.b64decode(encoded_image)
+        except Exception as e:
+            return {"error": f"Base64 decoding failed: {str(e)}"}
 
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is not set.")
+            return {"error": "GEMINI_API_KEY environment variable is not set on server."}
 
         client = genai.Client(api_key=api_key)
         model = os.getenv("GEMMA_MODEL", "gemma-4-26b-a4b-it")
 
         prompt = (
-            "Analyze this image and provide a a beautiful, artistically curated color palette of 8 to 12 distinct hex colors that capture the essence of the scene. "
-            "Also provide a short, one-sentence theme description of the subject. "
-            "Return the result ONLY as a JSON object. No explanation, no markdown. "
-            "Structure: { \"palette\": [\"#hex1\", \"#hex2\", ...], \"theme\": \"A description of the image\" } "
+            "Analyze this image and provide a beautiful, artistically curated color palette "
+            "of 8 to 12 distinct hex colors that capture the essence of the scene. "
+            "Also provide a short, one-sentence theme description. "
+            "Return ONLY a JSON object. No markdown, no explanation. "
+            "Format: { \"palette\": [\"#hex1\", \"#hex2\", ...], \"theme\": \"description\" }"
         )
 
         response = client.models.generate_content(
@@ -46,8 +57,10 @@ def generate_pixel_art(image_data_url: str) -> dict:
             text = match.group(0)
 
         return json.loads(text)
+    except json.JSONDecodeError:
+        return {"error": f"AI returned invalid JSON: {text[:100]}..."}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"Unexpected error: {str(e)}"}
 
 @app.post("/api/analyze")
 async def analyze_image(request: AnalyzeRequest):
