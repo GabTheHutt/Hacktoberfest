@@ -29,12 +29,10 @@ def generate_pixel_art(image_data_url: str) -> dict:
         model = os.getenv("GEMMA_MODEL", "gemma-4-26b-a4b-it")
 
         prompt = (
-            "Convert this image into a 16x16 pixel art grid. "
-            "Return ONLY a JSON object with: "
-            "1. 'palette': a list of up to 8 hex colors. "
-            "2. 'grid': a 16x16 array of integers (0 to palette_length-1). "
-            "No text, no markdown. "
-            "Example: { \"palette\": [\"#FF0000\", \"#00FF00\"], \"grid\": [[0,1...], ...] }"
+            "Analyze this image and provide a a beautiful, artistically curated color palette of 8 to 12 distinct hex colors that capture the essence of the scene. "
+            "Also provide a short, one-sentence theme description of the subject. "
+            "Return the result ONLY as a JSON object. No explanation, no markdown. "
+            "Structure: { \"palette\": [\"#hex1\", \"#hex2\", ...], \"theme\": \"A description of the image\" } "
         )
 
         response = client.models.generate_content(
@@ -43,7 +41,6 @@ def generate_pixel_art(image_data_url: str) -> dict:
         )
 
         text = response.text or "{}"
-        # Robust JSON extraction
         match = re.search(r'\{.*\}', text, re.DOTALL)
         if match:
             text = match.group(0)

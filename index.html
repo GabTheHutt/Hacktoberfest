@@ -8,7 +8,7 @@
 </head>
 <body>
   <h1>AI Pixel Art Color by Number</h1>
-  <p>Capture your photo, and Gemma will turn it into a pixel art puzzle!</p>
+  <p>Capture your photo, and Gemma will curate a palette for your pixel art puzzle!</p>
 
   <div class="controls">
     <button id="capture">Capture image</button>
@@ -23,6 +23,7 @@
   </div>
 
   <div id="game-container">
+    <div id="theme-display" style="font-style: italic; margin-bottom: 10px; font-weight: 500;"></div>
     <div id="palette"></div>
     <div id="pixel-grid"></div>
   </div>
@@ -34,11 +35,15 @@
     const gameContainer = document.querySelector("#game-container");
     const pixelGrid = document.querySelector("#pixel-grid");
     const paletteContainer = document.querySelector("#palette");
+    const themeDisplay = document.querySelector("#theme-display");
 
     let currentPalette = [];
     let selectedColorIndex = null;
     let gameData = null;
     let isPainting = false;
+
+    // Resolution Setting
+    const GRID_SIZE = 64;
 
     async function setupWebcam() {
       try {
@@ -47,6 +52,64 @@
       } catch {
         status.textContent = "Webcam access was denied or is unavailable.";
       }
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    function getColorDistance(rgb1, rgb2) {
+      return Math.sqrt(
+        Math.pow(rgb1.r - rgb2.r, 2) +
+        Math.pow(rgb1.g - rgb2.g, 2) +
+        Math.pow(rgb1.b - rgb2.b, 2)
+      );
+    }
+
+    function generateLocalGrid(originalImage) {
+      const grid = [];
+      const canvas = document.createElement("canvas");
+      canvas.width = GRID_SIZE;
+      canvas.height = GRID_SIZE;
+      const ctx = canvas.getContext("2d");
+
+      ctx.drawImage(originalImage, 0, 0, GRID_SIZE, GRID_SIZE);
+      const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
+
+      const paletteRgb = currentPalette.map(hex => hexToRgb(hex));
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        const row = [];
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const idx = (y * GRID_SIZE + x) * 4;
+          const pixelRgb = {
+            r: imageData[idx],
+            g: imageData[idx + 1],
+            b: imageData[idx + 2]
+          };
+
+          let minDistance = Infinity;
+          let closestIndex = 0;
+
+          paletteRgb.forEach((paletteRgbColor, pIdx) => {
+            if (!paletteRgbColor) return;
+            const dist = getColorDistance(pixelRgb, paletteRgbColor);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestIndex = pIdx;
+            }
+          });
+
+          row.push(closestIndex);
+        }
+        grid.push(row);
+      }
+      return grid;
     }
 
     async function captureAndProcess() {
@@ -58,24 +121,21 @@
       const captureBtn = document.querySelector("#capture");
       captureBtn.disabled = true;
 
-      // Create a snapshot to show the user what was captured
       const snapshot = document.querySelector("#snapshot");
       snapshot.width = video.videoWidth;
       snapshot.height = video.videoHeight;
       const sCtx = snapshot.getContext("2d");
       sCtx.drawImage(video, 0, 0);
 
-      // Show snapshot, hide live video
       snapshot.style.display = "block";
       video.style.display = "none";
 
-      // Lock the frame: stop the stream
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
       }
 
       status.className = "";
-      status.textContent = "Gemma is painting your pixel art...";
+      status.textContent = "Gemma is curating your palette...";
 
       const tempCanvas = document.createElement("canvas");
       const scale = Math.min(1, 256 / video.videoWidth);
@@ -96,11 +156,26 @@
 
         gameData = data.result;
         if (!gameData || gameData.error) {
-          throw new Error(gameData?.error || "Gemma failed to generate the grid.");
+          throw new Error(gameData?.error || "Gemma failed to generate the palette.");
         }
 
-        previewContainer.style.display = "none";
-        initGame();
+        const originalCanvas = document.createElement("canvas");
+        originalCanvas.width = video.videoWidth;
+        originalCanvas.height = video.videoHeight;
+        const oCtx = originalCanvas.getContext("2d");
+        oCtx.drawImage(video, 0, 0);
+
+        const img = new Image();
+        img.src = originalCanvas.toDataURL();
+
+        img.onload = () => {
+          currentPalette = gameData.palette || [];
+          const grid = generateLocalGrid(img);
+          gameData.grid = grid;
+          previewContainer.style.display = "none";
+          initGame();
+        };
+
       } catch (error) {
         status.textContent = `Error: ${error.message}`;
         captureBtn.disabled = false;
@@ -111,12 +186,12 @@
     }
 
     function initGame() {
-      currentPalette = gameData.palette || [];
       if (currentPalette.length === 0) {
         status.textContent = "Error: No palette received from AI.";
         return;
       }
 
+      themeDisplay.textContent = gameData.theme || "";
       status.className = "success";
       status.textContent = "Color the pixels by their numbers!";
       gameContainer.style.display = "flex";
@@ -133,7 +208,7 @@
 
       pixelGrid.innerHTML = "";
       if (!gameData.grid || !Array.isArray(gameData.grid)) {
-        status.textContent = "Error: Invalid grid received from AI.";
+        status.textContent = "Error: Invalid grid generated.";
         return;
       }
 
@@ -198,7 +273,7 @@
     }
 
     function checkWin() {
-      const totalPixels = 16 * 16;
+      const totalPixels = GRID_SIZE * GRID_SIZE;
       const filledPixels = document.querySelectorAll(".pixel.filled").length;
       if (filledPixels === totalPixels) {
         status.className = "success";
