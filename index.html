@@ -4,66 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Pixel Art Color by Number</title>
-  <style>
-    :root { color-scheme: light; font-family: system-ui, sans-serif; }
-    body { max-width: 800px; margin: 2rem auto; padding: 0 1rem; text-align: center; background: #f8f9fa; color: #333; }
-    .controls { margin-bottom: 1.5rem; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-
-    #preview-container { margin-bottom: 20px; display: block; }
-    #webcam {
-      width: 100%;
-      max-width: 400px;
-      border: 4px solid #333;
-      border-radius: 8px;
-      background: #000;
-      transform: scaleX(-1); /* Mirror the camera feed */
-    }
-
-    #game-container { display: none; flex-direction: column; align-items: center; gap: 20px; }
-    #pixel-grid {
-      display: grid;
-      grid-template-columns: repeat(16, 25px);
-      grid-template-rows: repeat(16, 25px);
-      gap: 0;
-      border: 4px solid #333;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .pixel {
-      width: 25px;
-      height: 25px;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: #aaa;
-      cursor: pointer;
-      user-select: none;
-      transition: background 0.2s;
-    }
-    .pixel.filled { color: transparent; }
-
-    #palette { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
-    .color-swatch {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 3px solid transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      color: white;
-      text-shadow: 1px 1px 2px black;
-    }
-    .color-swatch.active { border-color: #333; transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-
-    button { padding: .65rem 1.2rem; font: inherit; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: white; transition: 0.2s; }
-    button:hover { background: #eee; }
-    #status { margin: 1rem 0; font-weight: 500; min-height: 1.5rem; color: #d32f2f; }
-    #status.success { color: #2e7d32; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <h1>AI Pixel Art Color by Number</h1>
