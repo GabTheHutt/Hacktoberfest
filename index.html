@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Pixel Art Color by Number</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { max-width: 800px; margin: 2rem auto; padding: 0 1rem; text-align: center; background: #f8f9fa; color: #333; }
+    .controls { margin-bottom: 1.5rem; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+    #preview-container { margin-bottom: 20px; display: block; }
+    #webcam {
+      width: 100%;
+      max-width: 400px;
+      border: 4px solid #333;
+      border-radius: 8px;
+      background: #000;
+      transform: scaleX(-1); /* Mirror the camera feed */
+    }
+
+    #game-container { display: none; flex-direction: column; align-items: center; gap: 20px; }
+    #pixel-grid {
+      display: grid;
+      grid-template-columns: repeat(16, 25px);
+      grid-template-rows: repeat(16, 25px);
+      gap: 1px;
+      background: #ccc;
+      border: 4px solid #333;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .pixel {
+      width: 25px;
+      height: 25px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #aaa;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .pixel.filled { color: transparent; }
+
+    #palette { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
+    .color-swatch {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px black;
+    }
+    .color-swatch.active { border-color: #333; transform: scale(1.2); box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+
+    button { padding: .65rem 1.2rem; font: inherit; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: white; transition: 0.2s; }
+    button:hover { background: #eee; }
+    #status { margin: 1rem 0; font-weight: 500; min-height: 1.5rem; color: #d32f2f; }
+    #status.success { color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <h1>AI Pixel Art Color by Number</h1>
+  <p>Capture your photo, and Gemma will turn it into a pixel art puzzle!</p>
+
+  <div class="controls">
+    <button id="capture">Capture image</button>
+    <button id="clear">Reset Game</button>
+  </div>
+
+  <p id="status">Allow webcam access, then capture an image.</p>
+
+  <div id="preview-container">
+    <video id="webcam" autoplay playsinline></video>
+  </div>
+
+  <div id="game-container">
+    <div id="palette"></div>
+    <div id="pixel-grid"></div>
+  </div>
+
+  <script>
+    const video = document.querySelector("#webcam");
+    const status = document.querySelector("#status");
+    const previewContainer = document.querySelector("#preview-container");
+    const gameContainer = document.querySelector("#game-container");
+    const pixelGrid = document.querySelector("#pixel-grid");
+    const paletteContainer = document.querySelector("#palette");
+
+    let currentPalette = [];
+    let selectedColorIndex = null;
+    let gameData = null;
+
+    async function setupWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch {
+        status.textContent = "Webcam access was denied or is unavailable.";
+      }
+    }
+
+    async function captureAndProcess() {
+      if (!video.videoWidth) {
+        status.textContent = "The webcam is not ready yet.";
+        return;
+      }
+
+      status.className = "";
+      status.textContent = "Gemma is painting your pixel art...";
+
+      const tempCanvas = document.createElement("canvas");
+      const scale = Math.min(1, 512 / video.videoWidth);
+      tempCanvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      tempCanvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const ctx = tempCanvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      const imageDataUrl = tempCanvas.toDataURL("image/png");
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 90000);
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageDataUrl }),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Request failed");
+
+        gameData = data.result;
+        if (!gameData || gameData.error) {
+          throw new Error(gameData?.error || "Gemma failed to generate the grid.");
+        }
+
+        previewContainer.style.display = "none";
+        initGame();
+      } catch (error) {
+        status.textContent = error.name === "AbortError"
+          ? "Gemma took longer than 90 seconds. Check the server terminal for details and try again."
+          : `Error: ${error.message}`;
+      }
+    }
+
+    function initGame() {
+      currentPalette = gameData.palette || [];
+      if (currentPalette.length === 0) {
+        status.textContent = "Error: No palette received from AI.";
+        return;
+      }
+
+      status.className = "success";
+      status.textContent = "Color the pixels by their numbers!";
+      gameContainer.style.display = "flex";
+
+      paletteContainer.innerHTML = "";
+      currentPalette.forEach((color, index) => {
+        const swatch = document.createElement("div");
+        swatch.className = "color-swatch";
+        swatch.style.backgroundColor = color;
+        swatch.textContent = index;
+        swatch.onclick = () => selectColor(index.toString(), swatch);
+        paletteContainer.appendChild(swatch);
+      });
+
+      pixelGrid.innerHTML = "";
+      if (!gameData.grid || !Array.isArray(gameData.grid)) {
+        status.textContent = "Error: Invalid grid received from AI.";
+        return;
+      }
+
+      gameData.grid.forEach((row, rIdx) => {
+        row.forEach((colorIndex, cIdx) => {
+          const pixel = document.createElement("div");
+          pixel.className = "pixel";
+          pixel.textContent = colorIndex;
+          pixel.dataset.color = colorIndex;
+          pixel.onclick = () => handlePixelClick(pixel);
+          pixelGrid.appendChild(pixel);
+        });
+      });
+    }
+
+    function selectColor(index, element) {
+      selectedColorIndex = index;
+      document.querySelectorAll(".color-swatch").forEach(s => s.classList.remove("active"));
+      element.classList.add("active");
+    }
+
+    function handlePixelClick(pixel) {
+      if (selectedColorIndex === null) {
+        status.textContent = "Please select a color from the palette first!";
+        return;
+      }
+
+      const targetColor = pixel.dataset.color;
+      if (targetColor === selectedColorIndex) {
+        pixel.style.backgroundColor = currentPalette[parseInt(targetColor)];
+        pixel.classList.add("filled");
+        status.textContent = "Correct!";
+        checkWin();
+      } else {
+        status.textContent = "Wrong color! Try again.";
+      }
+    }
+
+    function checkWin() {
+      const totalPixels = 16 * 16;
+      const filledPixels = document.querySelectorAll(".pixel.filled").length;
+      if (filledPixels === totalPixels) {
+        status.className = "success";
+        status.textContent = "🎉 Masterpiece complete! You've finished the painting!";
+      }
+    }
+
+    document.querySelector("#capture").addEventListener("click", captureAndProcess);
+    document.querySelector("#clear").addEventListener("click", () => {
+      gameContainer.style.display = "none";
+      previewContainer.style.display = "block";
+      status.className = "";
+      status.textContent = "Allow webcam access, then capture an image.";
+    });
+
+    setupWebcam();
+  </script>
+</body>
+</html>
