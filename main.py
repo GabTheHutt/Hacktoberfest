@@ -29,12 +29,12 @@ def generate_pixel_art(image_data_url: str) -> dict:
         model = os.getenv("GEMMA_MODEL", "gemma-4-26b-a4b-it")
 
         prompt = (
-            "Analyze this image and convert it into a simplified 16x16 pixel art version. "
-            "1. Create a palette of up to 8 distinct hex colors found in the image as a simple list. "
-            "2. Map the image to a 16x16 grid where each cell is an integer (0 to palette_length-1). "
-            "3. Return the result ONLY as a JSON object. No explanation, no markdown. "
-            "Structure: { \"palette\": [\"#hex1\", \"#hex2\", ...], \"grid\": [ [0, 1, ...], [ ... ], ... ] } "
-            "Ensure the grid is exactly 16 rows and 16 columns."
+            "Convert this image into a 16x16 pixel art grid. "
+            "Return ONLY a JSON object with: "
+            "1. 'palette': a list of up to 8 hex colors. "
+            "2. 'grid': a 16x16 array of integers (0 to palette_length-1). "
+            "No text, no markdown. "
+            "Example: { \"palette\": [\"#FF0000\", \"#00FF00\"], \"grid\": [[0,1...], ...] }"
         )
 
         response = client.models.generate_content(
