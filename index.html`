@@ -42,9 +42,10 @@
     let selectedColorIndex = null;
     let gameData = null;
     let isPainting = false;
+    let filledGrid = [];
 
     const GRID_SIZE = 64;
-    const PIXEL_SIZE = 8;
+    const PIXEL_SIZE = 8; // 64 * 8 = 512px
 
     async function setupWebcam() {
       try {
@@ -72,13 +73,15 @@
       );
     }
 
-    function generateLocalGrid(originalImage) {
+    function generateLocalGrid(sourceCanvas) {
       const grid = [];
       const canvas = document.createElement("canvas");
       canvas.width = GRID_SIZE;
       canvas.height = GRID_SIZE;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(originalImage, 0, 0, GRID_SIZE, GRID_SIZE);
+
+      // Draw the source canvas (snapshot) directly to the tiny grid canvas
+      ctx.drawImage(sourceCanvas, 0, 0, GRID_SIZE, GRID_SIZE);
       const imageData = ctx.getImageData(0, 0, GRID_SIZE, GRID_SIZE).data;
       const paletteRgb = currentPalette.map(hex => hexToRgb(hex));
 
@@ -104,6 +107,31 @@
       return grid;
     }
 
+    function drawGame() {
+      gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const colorIndex = gameData.grid[y][x];
+
+          if (filledGrid[y][x]) {
+            gCtx.fillStyle = currentPalette[colorIndex];
+            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+          } else {
+            gCtx.fillStyle = "white";
+            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+
+            // Optional: Draw numbers if resolution is low enough, or keep them very faint
+            gCtx.fillStyle = "#ddd";
+            gCtx.font = "5px Arial";
+            gCtx.textAlign = "center";
+            gCtx.textBaseline = "middle";
+            gCtx.fillText(colorIndex, x * PIXEL_SIZE + PIXEL_SIZE/2, y * PIXEL_SIZE + PIXEL_SIZE/2);
+          }
+        }
+      }
+    }
+
     async function captureAndProcess() {
       if (!video.videoWidth) {
         status.textContent = "The webcam is not ready yet.";
@@ -113,6 +141,7 @@
       const captureBtn = document.querySelector("#capture");
       captureBtn.disabled = true;
 
+      // 1. Capture snapshot immediately
       const snapshot = document.querySelector("#snapshot");
       snapshot.width = video.videoWidth;
       snapshot.height = video.videoHeight;
@@ -129,8 +158,9 @@
       status.className = "";
       status.innerHTML = `<div class="loader"></div> Gemma is curating your palette...`;
 
+      // 2. Optimized AI Image: Lower resolution (128px) for faster API processing
       const tempCanvas = document.createElement("canvas");
-      const scale = Math.min(1, 256 / video.videoWidth);
+      const scale = Math.min(1, 128 / video.videoWidth);
       tempCanvas.width = Math.max(1, Math.round(video.videoWidth * scale));
       tempCanvas.height = Math.max(1, Math.round(video.videoHeight * scale));
       const ctx = tempCanvas.getContext("2d");
@@ -151,22 +181,13 @@
           throw new Error(gameData?.error || "Gemma failed to generate the palette.");
         }
 
-        const originalCanvas = document.createElement("canvas");
-        originalCanvas.width = snapshot.width;
-        originalCanvas.height = snapshot.height;
-        const oCtx = originalCanvas.getContext("2d");
-        oCtx.drawImage(snapshot, 0, 0);
+        // 3. Instant Local Grid: Process directly from the snapshot canvas
+        currentPalette = gameData.palette || [];
+        const grid = generateLocalGrid(snapshot);
+        gameData.grid = grid;
 
-        const img = new Image();
-        img.src = originalCanvas.toDataURL();
-
-        img.onload = () => {
-          currentPalette = gameData.palette || [];
-          const grid = generateLocalGrid(img);
-          gameData.grid = grid;
-          previewContainer.style.display = "none";
-          initGame();
-        };
+        previewContainer.style.display = "none";
+        initGame();
 
       } catch (error) {
         status.textContent = `Error: ${error.message}`;
@@ -203,27 +224,6 @@
       drawGame();
     }
 
-    function drawGame() {
-      gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-      for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
-          const colorIndex = gameData.grid[y][x];
-          if (filledGrid[y][x]) {
-            gCtx.fillStyle = currentPalette[colorIndex];
-            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-          } else {
-            gCtx.fillStyle = "white";
-            gCtx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-            gCtx.fillStyle = "#ddd";
-            gCtx.font = "5px Arial";
-            gCtx.textAlign = "center";
-            gCtx.textBaseline = "middle";
-            gCtx.fillText(colorIndex, x * PIXEL_SIZE + PIXEL_SIZE/2, y * PIXEL_SIZE + PIXEL_SIZE/2);
-          }
-        }
-      }
-    }
-
     function handleInput(e) {
       if (selectedColorIndex === null) {
         status.textContent = "Please select a color from the palette first!";
@@ -232,6 +232,7 @@
       const rect = gameCanvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) / (rect.width / GRID_SIZE));
       const y = Math.floor((e.clientY - rect.top) / (rect.height / GRID_SIZE));
+
       if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
         const targetColor = gameData.grid[y][x];
         if (targetColor === selectedColorIndex) {
