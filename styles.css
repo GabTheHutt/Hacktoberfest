@@ -125,18 +125,14 @@ button:disabled {
     animation: slideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-#pixel-grid {
-    display: grid;
-    grid-template-columns: repeat(64, 1fr);
-    grid-template-rows: repeat(64, 1fr);
-    gap: 0;
+#game-canvas {
+    width: 512px;
+    height: 512px;
     background: #ddd;
     border: 5px solid white;
     border-radius: 5px;
     box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-    overflow: hidden;
-    width: 512px;
-    height: 512px;
+    cursor: crosshair;
 }
 
 .pixel {
