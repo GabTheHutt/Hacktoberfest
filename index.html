@@ -54,6 +54,14 @@
         return;
       }
 
+      // Lock the frame: stop the stream and disable the button
+      const captureBtn = document.querySelector("#capture");
+      captureBtn.disabled = true;
+
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+      }
+
       status.className = "";
       status.textContent = "Gemma is painting your pixel art...";
 
@@ -83,6 +91,8 @@
         initGame();
       } catch (error) {
         status.textContent = `Error: ${error.message}`;
+        captureBtn.disabled = false;
+        setupWebcam(); // Restart if it fails
       }
     }
 
@@ -188,6 +198,8 @@
       previewContainer.style.display = "block";
       status.className = "";
       status.textContent = "Allow webcam access, then capture an image.";
+      document.querySelector("#capture").disabled = false;
+      setupWebcam();
     });
 
     setupWebcam();
